@@ -58,6 +58,21 @@ struct Edge {
   }
 };
 
+struct OnePole {
+  float b0 = 1, a1 = 0, yn1 = 0;
+
+  void frequency(float hertz) {
+    a1 = exp(-2.0f * 3.14159265358979323846f * hertz / SAMPLE_RATE);
+    b0 = 1.0f - a1;
+  }
+
+  void period(float seconds) { frequency(1 / seconds); }
+
+  float operator()(float xn) {  //
+    return yn1 = b0 * xn + a1 * yn1;
+  }
+};
+
 inline float mtof(float m) { return 8.175799f * powf(2.0f, m / 12.0f); }
 
 struct MyApp : App {
@@ -65,6 +80,7 @@ struct MyApp : App {
 
   Edge edge;
   Phasor bar;
+  OnePole onePole;
 
   Color color;
 
@@ -77,6 +93,7 @@ struct MyApp : App {
     gui.init();
 
     bar.period(2.0);
+    onePole.frequency(10);
   }
   float value;
   void onSound(AudioIOData& io) {
@@ -88,11 +105,15 @@ struct MyApp : App {
         color = HSV(al::rnd::uniform(), 1.0, 1.0);
       }
 
+      float f = onePole(value);
+
+      foo.frequency(mtof(f * 127));
+
       // float v = 2 * foo() - 1;
       float v = sin(foo() * M_2PI);
 
       io.out(0) = v;
-      io.out(1) = value;
+      io.out(1) = f;
     }
   }
 
@@ -109,7 +130,7 @@ struct MyApp : App {
     // XXX do we have a clamp function? limit? constrain?
 
     value = x;
-    foo.frequency(mtof(value * 127));
+
     cout << x << ", " << y << endl;
   }
 
